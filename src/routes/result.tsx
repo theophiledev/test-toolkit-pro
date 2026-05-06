@@ -4,12 +4,21 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Award, Download } from "lucide-react";
 import jsPDF from "jspdf";
+import { gradeAnswer, type Question } from "@/lib/exam";
 
 export const Route = createFileRoute("/result")({
   component: Result,
 });
 
-type R = { student: { name: string; reg_no: string }; score: number; total: number; auto: boolean; submitted_at: string };
+type R = {
+  student: { name: string; reg_no: string };
+  score: number;
+  total: number;
+  auto: boolean;
+  submitted_at: string;
+  questions?: Question[];
+  answers?: Record<number, string>;
+};
 
 function Result() {
   const navigate = useNavigate();
@@ -44,6 +53,56 @@ function Result() {
     y += 10;
     doc.setFontSize(10);
     doc.text("This document serves as official evidence of exam submission.", 20, y);
+    y += 10;
+
+    const questions = r.questions || [];
+    const answers = r.answers || {};
+    if (questions.length) {
+      doc.addPage();
+      y = 20;
+      doc.setFontSize(14);
+      doc.text("Answer Sheet", 20, y);
+      y += 8;
+      doc.setLineWidth(0.3);
+      doc.line(20, y, 190, y);
+      y += 8;
+      doc.setFontSize(10);
+
+      const writeWrapped = (text: string, x: number, maxW: number) => {
+        const lines = doc.splitTextToSize(text, maxW);
+        for (const ln of lines) {
+          if (y > 280) { doc.addPage(); y = 20; }
+          doc.text(ln, x, y);
+          y += 5;
+        }
+      };
+
+      questions.forEach((q, i) => {
+        if (y > 260) { doc.addPage(); y = 20; }
+        const userAns = answers[q.id] || "(no answer)";
+        const correct = q.correct_answer || "(manually graded)";
+        const isCorrect = q.type !== "LONG" && gradeAnswer(q, answers[q.id]);
+
+        doc.setFont("helvetica", "bold");
+        writeWrapped(`Q${i + 1}. [${q.type}] ${q.question}`, 20, 170);
+        doc.setFont("helvetica", "normal");
+
+        if (q.type === "MCQ") {
+          (["a", "b", "c", "d"] as const).forEach((k) => {
+            const opt = q[`option_${k}` as "option_a"];
+            if (opt) writeWrapped(`   ${k.toUpperCase()}. ${opt}`, 20, 170);
+          });
+        }
+
+        doc.setTextColor(isCorrect ? 0 : 200, isCorrect ? 130 : 0, 0);
+        writeWrapped(`Your answer: ${userAns} ${q.type === "LONG" ? "" : isCorrect ? "✓" : "✗"}`, 20, 170);
+        doc.setTextColor(0, 100, 0);
+        writeWrapped(`Correct answer: ${correct}`, 20, 170);
+        doc.setTextColor(0, 0, 0);
+        y += 3;
+      });
+    }
+
     doc.save(`result_${r.student.reg_no}.pdf`);
   };
 
