@@ -14,7 +14,104 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      questions: {
+        Row: {
+          correct_answer: string | null
+          id: number
+          match_left: string | null
+          match_right: string | null
+          option_a: string | null
+          option_b: string | null
+          option_c: string | null
+          option_d: string | null
+          ord: number | null
+          question: string
+          type: Database["public"]["Enums"]["question_type"]
+        }
+        Insert: {
+          correct_answer?: string | null
+          id?: number
+          match_left?: string | null
+          match_right?: string | null
+          option_a?: string | null
+          option_b?: string | null
+          option_c?: string | null
+          option_d?: string | null
+          ord?: number | null
+          question: string
+          type: Database["public"]["Enums"]["question_type"]
+        }
+        Update: {
+          correct_answer?: string | null
+          id?: number
+          match_left?: string | null
+          match_right?: string | null
+          option_a?: string | null
+          option_b?: string | null
+          option_c?: string | null
+          option_d?: string | null
+          ord?: number | null
+          question?: string
+          type?: Database["public"]["Enums"]["question_type"]
+        }
+        Relationships: []
+      }
+      results: {
+        Row: {
+          answers: Json
+          id: number
+          score: number
+          student_name: string
+          student_reg: string
+          submitted_at: string
+          total: number
+        }
+        Insert: {
+          answers?: Json
+          id?: number
+          score?: number
+          student_name: string
+          student_reg: string
+          submitted_at?: string
+          total?: number
+        }
+        Update: {
+          answers?: Json
+          id?: number
+          score?: number
+          student_name?: string
+          student_reg?: string
+          submitted_at?: string
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "results_student_reg_fkey"
+            columns: ["student_reg"]
+            isOneToOne: true
+            referencedRelation: "students"
+            referencedColumns: ["reg_no"]
+          },
+        ]
+      }
+      students: {
+        Row: {
+          name: string
+          number: number | null
+          reg_no: string
+        }
+        Insert: {
+          name: string
+          number?: number | null
+          reg_no: string
+        }
+        Update: {
+          name?: string
+          number?: number | null
+          reg_no?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +120,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      question_type: "MCQ" | "TF" | "MATCH" | "LONG"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +247,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      question_type: ["MCQ", "TF", "MATCH", "LONG"],
+    },
   },
 } as const
