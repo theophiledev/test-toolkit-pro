@@ -64,6 +64,7 @@ function Exam() {
     sessionStorage.setItem("exam_result", JSON.stringify({
       student, score, total: gradable.length, auto,
       submitted_at: new Date().toISOString(),
+      questions, answers,
     }));
     sessionStorage.removeItem("exam_student");
     navigate({ to: "/result" });
