@@ -34,10 +34,14 @@ export const Route = createRootRoute({
       { name: "description", content: "Online DevOps exam — login, take quiz, get results." },
       { name: "author", content: "Lovable" },
       { property: "og:title", content: "DevOps Exam Portal" },
-      { property: "og:description", content: "Online DevOps exam portal." },
+      { property: "og:description", content: "Online DevOps exam — login, take quiz, get results." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "DevOps Exam Portal" },
+      { name: "twitter:description", content: "Online DevOps exam — login, take quiz, get results." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/fc593f64-c7bb-4390-8c87-fcf839991927/id-preview-e0678c60--36872c89-0dc2-4e24-8226-5c71f8911636.lovable.app-1778145208346.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/fc593f64-c7bb-4390-8c87-fcf839991927/id-preview-e0678c60--36872c89-0dc2-4e24-8226-5c71f8911636.lovable.app-1778145208346.png" },
     ],
     links: [
       {
