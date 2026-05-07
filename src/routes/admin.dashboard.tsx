@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Download, LogOut, Trophy, Users, TrendingUp, FilePlus, UserPlus } from "lucide-react";
+import { Download, LogOut, Trophy, Users, TrendingUp, FilePlus, UserPlus, RotateCcw } from "lucide-react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import jsPDF from "jspdf";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/dashboard")({
   component: Dashboard,
@@ -26,15 +27,31 @@ function Dashboard() {
   const navigate = useNavigate();
   const [results, setResults] = useState<Result[]>([]);
   const [studentCount, setStudentCount] = useState(0);
+  const [resetting, setResetting] = useState<string | null>(null);
 
   useEffect(() => {
     if (sessionStorage.getItem("admin_ok") !== "1") {
       navigate({ to: "/admin" });
       return;
     }
-    supabase.from("results").select("*").order("submitted_at", { ascending: false }).then(({ data }) => setResults((data as Result[]) || []));
+    loadResults();
     supabase.from("students").select("*", { count: "exact", head: true }).then(({ count }) => setStudentCount(count || 0));
   }, [navigate]);
+
+  const loadResults = async () => {
+    const { data } = await supabase.from("results").select("*").order("submitted_at", { ascending: false });
+    setResults((data as Result[]) || []);
+  };
+
+  const resetAttempt = async (reg: string, name: string) => {
+    if (!confirm(`Reset ${name} (${reg}) and allow a retake? This deletes their previous result.`)) return;
+    setResetting(reg);
+    const { error } = await supabase.from("results").delete().eq("student_reg", reg);
+    setResetting(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${name} can now retake the exam`);
+    loadResults();
+  };
 
   const passed = results.filter((r) => r.total && r.score / r.total >= 0.5).length;
   const failed = results.length - passed;
@@ -142,11 +159,12 @@ function Dashboard() {
                 <TableHead>%</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Submitted</TableHead>
+                <TableHead>Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {results.length === 0 && (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No submissions yet.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No submissions yet.</TableCell></TableRow>
               )}
               {results.map((r) => {
                 const pct = r.total ? Math.round((r.score / r.total) * 100) : 0;
@@ -159,6 +177,11 @@ function Dashboard() {
                     <TableCell>{pct}%</TableCell>
                     <TableCell><Badge variant={pass ? "default" : "destructive"}>{pass ? "PASS" : "FAIL"}</Badge></TableCell>
                     <TableCell className="text-sm text-muted-foreground">{new Date(r.submitted_at).toLocaleString()}</TableCell>
+                    <TableCell>
+                      <Button size="sm" variant="outline" disabled={resetting === r.student_reg} onClick={() => resetAttempt(r.student_reg, r.student_name)}>
+                        <RotateCcw className="h-3 w-3 mr-1" />{resetting === r.student_reg ? "..." : "Reset"}
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 );
               })}
