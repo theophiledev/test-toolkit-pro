@@ -7,7 +7,7 @@ import { ShieldCheck } from "lucide-react";
 import { ADMIN_PASS, ADMIN_USER } from "@/lib/exam";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/admin")({
+export const Route = createFileRoute("/admin/")({
   component: Admin,
 });
 
