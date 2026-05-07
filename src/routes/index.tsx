@@ -25,11 +25,6 @@ function Login() {
       setLoading(false);
       return toast.error("Registration number not found in roster");
     }
-    const { data: prev } = await supabase.from("results").select("id").eq("student_reg", r).maybeSingle();
-    if (prev) {
-      setLoading(false);
-      return toast.error("You have already taken this exam.");
-    }
     sessionStorage.setItem("exam_student", JSON.stringify(student));
     setLoading(false);
     navigate({ to: "/confirm" });
