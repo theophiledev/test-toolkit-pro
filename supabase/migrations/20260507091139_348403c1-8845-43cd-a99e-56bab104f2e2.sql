@@ -1,0 +1,1 @@
+CREATE POLICY "results deletable" ON public.results FOR DELETE TO public USING (true);
