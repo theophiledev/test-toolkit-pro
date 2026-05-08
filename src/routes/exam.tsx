@@ -44,13 +44,18 @@ function Exam() {
 
     const gradable = questions.filter((q) => q.type !== "LONG");
     let score = 0;
-    for (const q of gradable) if (gradeAnswer(q, answers[q.id])) score++;
+    let total = 0;
+    for (const q of gradable) {
+      const m = q.marks ?? 1;
+      total += m;
+      if (gradeAnswer(q, answers[q.id])) score += m;
+    }
 
     const { error } = await supabase.from("results").insert({
       student_reg: student.reg_no,
       student_name: student.name,
       score,
-      total: gradable.length,
+      total,
       answers,
     });
 
@@ -62,7 +67,7 @@ function Exam() {
     }
 
     sessionStorage.setItem("exam_result", JSON.stringify({
-      student, score, total: gradable.length, auto,
+      student, score, total, auto,
       submitted_at: new Date().toISOString(),
       questions, answers,
     }));
