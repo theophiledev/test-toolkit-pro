@@ -20,6 +20,11 @@ function Login() {
     if (!reg.trim()) return toast.error("Enter your registration number");
     setLoading(true);
     const r = reg.trim();
+    const { data: setting } = await supabase.from("settings" as any).select("value").eq("key", "quiz_active").maybeSingle();
+    if (!setting || (setting as any).value !== "true") {
+      setLoading(false);
+      return toast.error("The quiz is currently closed. Please contact your administrator.");
+    }
     const { data: student } = await supabase.from("students").select("*").eq("reg_no", r).maybeSingle();
     if (!student) {
       setLoading(false);

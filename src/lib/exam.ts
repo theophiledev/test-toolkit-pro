@@ -14,6 +14,7 @@ export type Question = {
   match_left: string | null;
   match_right: string | null;
   ord: number | null;
+  marks: number | null;
 };
 
 export function gradeAnswer(q: Question, ans: string | undefined): boolean {

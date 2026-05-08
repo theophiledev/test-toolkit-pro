@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           correct_answer: string | null
           id: number
+          marks: number
           match_left: string | null
           match_right: string | null
           option_a: string | null
@@ -31,6 +32,7 @@ export type Database = {
         Insert: {
           correct_answer?: string | null
           id?: number
+          marks?: number
           match_left?: string | null
           match_right?: string | null
           option_a?: string | null
@@ -44,6 +46,7 @@ export type Database = {
         Update: {
           correct_answer?: string | null
           id?: number
+          marks?: number
           match_left?: string | null
           match_right?: string | null
           option_a?: string | null
@@ -93,6 +96,21 @@ export type Database = {
             referencedColumns: ["reg_no"]
           },
         ]
+      }
+      settings: {
+        Row: {
+          key: string
+          value: string
+        }
+        Insert: {
+          key: string
+          value: string
+        }
+        Update: {
+          key?: string
+          value?: string
+        }
+        Relationships: []
       }
       students: {
         Row: {

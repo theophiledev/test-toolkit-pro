@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Download, LogOut, Trophy, Users, TrendingUp, FilePlus, UserPlus, RotateCcw } from "lucide-react";
+import { Download, LogOut, Trophy, Users, TrendingUp, FilePlus, UserPlus, RotateCcw, Power, PowerOff } from "lucide-react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import jsPDF from "jspdf";
 import { toast } from "sonner";
@@ -28,6 +28,8 @@ function Dashboard() {
   const [results, setResults] = useState<Result[]>([]);
   const [studentCount, setStudentCount] = useState(0);
   const [resetting, setResetting] = useState<string | null>(null);
+  const [quizActive, setQuizActive] = useState<boolean>(true);
+  const [togglingQuiz, setTogglingQuiz] = useState(false);
 
   useEffect(() => {
     if (sessionStorage.getItem("admin_ok") !== "1") {
@@ -36,6 +38,9 @@ function Dashboard() {
     }
     loadResults();
     supabase.from("students").select("*", { count: "exact", head: true }).then(({ count }) => setStudentCount(count || 0));
+    supabase.from("settings" as any).select("value").eq("key", "quiz_active").maybeSingle().then(({ data }) => {
+      setQuizActive(((data as any)?.value ?? "true") === "true");
+    });
   }, [navigate]);
 
   const loadResults = async () => {
@@ -51,6 +56,16 @@ function Dashboard() {
     if (error) { toast.error(error.message); return; }
     toast.success(`${name} can now retake the exam`);
     loadResults();
+  };
+
+  const toggleQuiz = async () => {
+    setTogglingQuiz(true);
+    const next = !quizActive;
+    const { error } = await supabase.from("settings" as any).upsert({ key: "quiz_active", value: next ? "true" : "false" });
+    setTogglingQuiz(false);
+    if (error) return toast.error(error.message);
+    setQuizActive(next);
+    toast.success(`Quiz is now ${next ? "ACTIVE" : "INACTIVE"}`);
   };
 
   const passed = results.filter((r) => r.total && r.score / r.total >= 0.5).length;
@@ -107,6 +122,10 @@ function Dashboard() {
           <p className="text-sm text-muted-foreground">Exam results & analytics</p>
         </div>
         <div className="flex gap-2">
+          <Button variant={quizActive ? "default" : "destructive"} onClick={toggleQuiz} disabled={togglingQuiz}>
+            {quizActive ? <Power className="h-4 w-4 mr-2" /> : <PowerOff className="h-4 w-4 mr-2" />}
+            {quizActive ? "Quiz Active" : "Quiz Inactive"}
+          </Button>
           <Link to="/admin/questions"><Button variant="outline"><FilePlus className="h-4 w-4 mr-2" />Questions</Button></Link>
           <Link to="/admin/students"><Button variant="outline"><UserPlus className="h-4 w-4 mr-2" />Students</Button></Link>
           <Button variant="outline" onClick={exportAllPDF}><Download className="h-4 w-4 mr-2" />Export PDF</Button>
