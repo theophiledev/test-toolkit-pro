@@ -28,7 +28,7 @@ function Login() {
     const { data: stu } = await supabase.from("students").select("*").eq("reg_no", r).maybeSingle();
     if (!stu) { setLoading(false); return toast.error("Registration number not found in roster"); }
     const { data: qz } = await supabase.from("quizzes" as any).select("*").eq("active", true).order("id", { ascending: false });
-    const list = (qz as Quiz[]) || [];
+    const list = (qz as unknown as Quiz[]) || [];
     if (list.length === 0) { setLoading(false); return toast.error("No active quiz available. Contact your administrator."); }
     setStudent(stu);
     setQuizzes(list);

@@ -26,7 +26,7 @@ function QuizzesAdmin() {
 
   const load = async () => {
     const { data } = await supabase.from("quizzes" as any).select("*").order("id", { ascending: false });
-    setList((data as Quiz[]) || []);
+    setList((data as unknown as Quiz[]) || []);
   };
 
   useEffect(() => {
