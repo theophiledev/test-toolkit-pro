@@ -17,6 +17,7 @@ export const Route = createFileRoute("/exam")({
 function Exam() {
   const navigate = useNavigate();
   const [student, setStudent] = useState<{ name: string; reg_no: string } | null>(null);
+  const [quiz, setQuiz] = useState<{ id: number; module: string; class_name: string } | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [timeLeft, setTimeLeft] = useState(EXAM_DURATION_SECONDS);
@@ -25,20 +26,23 @@ function Exam() {
 
   useEffect(() => {
     const s = sessionStorage.getItem("exam_student");
-    if (!s) {
+    const q = sessionStorage.getItem("exam_quiz");
+    if (!s || !q) {
       navigate({ to: "/" });
       return;
     }
-    setStudent(JSON.parse(s));
+    const stu = JSON.parse(s); const qz = JSON.parse(q);
+    setStudent(stu); setQuiz(qz);
     supabase
       .from("questions")
       .select("*")
+      .eq("quiz_id" as any, qz.id)
       .order("ord", { ascending: true })
       .then(({ data }) => setQuestions((data as Question[]) || []));
   }, [navigate]);
 
   const handleSubmit = async (auto = false) => {
-    if (submittedRef.current || !student) return;
+    if (submittedRef.current || !student || !quiz) return;
     submittedRef.current = true;
     setSubmitting(true);
 
@@ -57,7 +61,8 @@ function Exam() {
       score,
       total,
       answers,
-    });
+      quiz_id: quiz.id,
+    } as any);
 
     if (error) {
       toast.error("Submit failed: " + error.message);
@@ -67,11 +72,12 @@ function Exam() {
     }
 
     sessionStorage.setItem("exam_result", JSON.stringify({
-      student, score, total, auto,
+      student, score, total, auto, quiz,
       submitted_at: new Date().toISOString(),
       questions, answers,
     }));
     sessionStorage.removeItem("exam_student");
+    sessionStorage.removeItem("exam_quiz");
     navigate({ to: "/result" });
   };
 

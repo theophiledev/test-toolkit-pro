@@ -27,6 +27,7 @@ export type Database = {
           option_d: string | null
           ord: number | null
           question: string
+          quiz_id: number
           type: Database["public"]["Enums"]["question_type"]
         }
         Insert: {
@@ -41,6 +42,7 @@ export type Database = {
           option_d?: string | null
           ord?: number | null
           question: string
+          quiz_id: number
           type: Database["public"]["Enums"]["question_type"]
         }
         Update: {
@@ -55,7 +57,40 @@ export type Database = {
           option_d?: string | null
           ord?: number | null
           question?: string
+          quiz_id?: number
           type?: Database["public"]["Enums"]["question_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quizzes: {
+        Row: {
+          active: boolean
+          class_name: string
+          created_at: string
+          id: number
+          module: string
+        }
+        Insert: {
+          active?: boolean
+          class_name: string
+          created_at?: string
+          id?: number
+          module: string
+        }
+        Update: {
+          active?: boolean
+          class_name?: string
+          created_at?: string
+          id?: number
+          module?: string
         }
         Relationships: []
       }
@@ -63,6 +98,7 @@ export type Database = {
         Row: {
           answers: Json
           id: number
+          quiz_id: number | null
           score: number
           student_name: string
           student_reg: string
@@ -72,6 +108,7 @@ export type Database = {
         Insert: {
           answers?: Json
           id?: number
+          quiz_id?: number | null
           score?: number
           student_name: string
           student_reg: string
@@ -81,6 +118,7 @@ export type Database = {
         Update: {
           answers?: Json
           id?: number
+          quiz_id?: number | null
           score?: number
           student_name?: string
           student_reg?: string
@@ -88,6 +126,13 @@ export type Database = {
           total?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "results_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "results_student_reg_fkey"
             columns: ["student_reg"]

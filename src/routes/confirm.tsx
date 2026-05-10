@@ -11,14 +11,16 @@ export const Route = createFileRoute("/confirm")({
 function Confirm() {
   const navigate = useNavigate();
   const [student, setStudent] = useState<{ name: string; reg_no: string } | null>(null);
+  const [quiz, setQuiz] = useState<{ module: string; class_name: string } | null>(null);
 
   useEffect(() => {
     const s = sessionStorage.getItem("exam_student");
-    if (!s) navigate({ to: "/" });
-    else setStudent(JSON.parse(s));
+    const q = sessionStorage.getItem("exam_quiz");
+    if (!s || !q) navigate({ to: "/" });
+    else { setStudent(JSON.parse(s)); setQuiz(JSON.parse(q)); }
   }, [navigate]);
 
-  if (!student) return null;
+  if (!student || !quiz) return null;
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4">
@@ -30,6 +32,8 @@ function Confirm() {
         <div className="rounded-lg bg-muted p-4 space-y-2">
           <div className="flex justify-between"><span className="text-muted-foreground">Name</span><span className="font-semibold">{student.name}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Reg No</span><span className="font-semibold">{student.reg_no}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Module</span><span className="font-semibold">{quiz.module}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Class</span><span className="font-semibold">{quiz.class_name}</span></div>
         </div>
         <div className="text-sm text-muted-foreground space-y-1">
           <p>• You have <b>30 minutes</b> to complete the exam.</p>

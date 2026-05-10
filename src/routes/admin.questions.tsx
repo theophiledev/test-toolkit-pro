@@ -19,6 +19,9 @@ type QType = "MCQ" | "TF" | "MATCH" | "LONG";
 function QuestionsAdmin() {
   const navigate = useNavigate();
   const [list, setList] = useState<any[]>([]);
+  const [quizzes, setQuizzes] = useState<{ id: number; module: string; class_name: string }[]>([]);
+  const [quizId, setQuizId] = useState<string>("");
+  const [filterQuizId, setFilterQuizId] = useState<string>("all");
   const [type, setType] = useState<QType>("MCQ");
   const [question, setQuestion] = useState("");
   const [a, setA] = useState(""); const [b, setB] = useState("");
@@ -30,14 +33,22 @@ function QuestionsAdmin() {
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
-    const { data } = await supabase.from("questions").select("*").order("id", { ascending: false });
+    let q = supabase.from("questions").select("*").order("id", { ascending: false });
+    if (filterQuizId !== "all") q = q.eq("quiz_id" as any, Number(filterQuizId));
+    const { data } = await q;
     setList(data || []);
   };
 
   useEffect(() => {
     if (sessionStorage.getItem("admin_ok") !== "1") { navigate({ to: "/admin" }); return; }
+    supabase.from("quizzes" as any).select("*").order("id", { ascending: false }).then(({ data }) => {
+      const list = (data as unknown as { id: number; module: string; class_name: string }[]) || [];
+      setQuizzes(list);
+      if (!quizId && list[0]) setQuizId(String(list[0].id));
+    });
     load();
-  }, [navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigate, filterQuizId]);
 
   const reset = () => {
     setQuestion(""); setA(""); setB(""); setC(""); setD(""); setCorrect(""); setLeft(""); setRight("");
@@ -46,8 +57,9 @@ function QuestionsAdmin() {
 
   const save = async () => {
     if (!question.trim()) return toast.error("Question text required");
+    if (!quizId) return toast.error("Select a quiz");
     setSaving(true);
-    const payload: any = { question: question.trim(), type, marks: Number(marks) || 1 };
+    const payload: any = { question: question.trim(), type, marks: Number(marks) || 1, quiz_id: Number(quizId) };
     if (type === "MCQ") {
       payload.option_a = a; payload.option_b = b; payload.option_c = c; payload.option_d = d;
       payload.correct_answer = correct.toUpperCase();
@@ -69,6 +81,7 @@ function QuestionsAdmin() {
   const startEdit = (q: any) => {
     setEditingId(q.id);
     setType(q.type);
+    if (q.quiz_id) setQuizId(String(q.quiz_id));
     setQuestion(q.question || "");
     setA(q.option_a || ""); setB(q.option_b || ""); setC(q.option_c || ""); setD(q.option_d || "");
     setCorrect(q.correct_answer || "");
@@ -100,6 +113,15 @@ function QuestionsAdmin() {
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">{editingId ? `Editing question #${editingId}` : "Add new question"}</h3>
           {editingId && <Button variant="ghost" size="sm" onClick={reset}><X className="h-4 w-4 mr-1" />Cancel</Button>}
+        </div>
+        <div className="space-y-2">
+          <Label>Quiz</Label>
+          <Select value={quizId} onValueChange={setQuizId}>
+            <SelectTrigger><SelectValue placeholder="Select a quiz..." /></SelectTrigger>
+            <SelectContent>
+              {quizzes.map((q) => <SelectItem key={q.id} value={String(q.id)}>{q.module} — {q.class_name}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -145,7 +167,19 @@ function QuestionsAdmin() {
       </Card>
 
       <Card className="p-6">
-        <h3 className="font-semibold mb-3">All Questions ({list.length})</h3>
+        <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+          <h3 className="font-semibold">All Questions ({list.length})</h3>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs">Filter:</Label>
+            <Select value={filterQuizId} onValueChange={setFilterQuizId}>
+              <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All quizzes</SelectItem>
+                {quizzes.map((q) => <SelectItem key={q.id} value={String(q.id)}>{q.module} — {q.class_name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
         <div className="space-y-2 max-h-[500px] overflow-y-auto">
           {list.map((q) => (
             <div key={q.id} className="p-3 rounded-lg border text-sm">
