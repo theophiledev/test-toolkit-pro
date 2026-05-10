@@ -114,6 +114,15 @@ function QuestionsAdmin() {
           <h3 className="font-semibold">{editingId ? `Editing question #${editingId}` : "Add new question"}</h3>
           {editingId && <Button variant="ghost" size="sm" onClick={reset}><X className="h-4 w-4 mr-1" />Cancel</Button>}
         </div>
+        <div className="space-y-2">
+          <Label>Quiz</Label>
+          <Select value={quizId} onValueChange={setQuizId}>
+            <SelectTrigger><SelectValue placeholder="Select a quiz..." /></SelectTrigger>
+            <SelectContent>
+              {quizzes.map((q) => <SelectItem key={q.id} value={String(q.id)}>{q.module} — {q.class_name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Type</Label>
@@ -158,7 +167,19 @@ function QuestionsAdmin() {
       </Card>
 
       <Card className="p-6">
-        <h3 className="font-semibold mb-3">All Questions ({list.length})</h3>
+        <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+          <h3 className="font-semibold">All Questions ({list.length})</h3>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs">Filter:</Label>
+            <Select value={filterQuizId} onValueChange={setFilterQuizId}>
+              <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All quizzes</SelectItem>
+                {quizzes.map((q) => <SelectItem key={q.id} value={String(q.id)}>{q.module} — {q.class_name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
         <div className="space-y-2 max-h-[500px] overflow-y-auto">
           {list.map((q) => (
             <div key={q.id} className="p-3 rounded-lg border text-sm">
