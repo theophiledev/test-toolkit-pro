@@ -36,6 +36,8 @@ function Dashboard() {
   const [resetting, setResetting] = useState<string | null>(null);
   const [printing, setPrinting] = useState<number | null>(null);
   const [quizzes, setQuizzes] = useState<Record<number, Quiz>>({});
+  const [studentTotal, setStudentTotal] = useState(0);
+  const [quizTakenCounts, setQuizTakenCounts] = useState<Record<number, number>>({});
 
   useEffect(() => {
     if (sessionStorage.getItem("admin_ok") !== "1") {
@@ -43,7 +45,10 @@ function Dashboard() {
       return;
     }
     loadResults();
-    supabase.from("students").select("*", { count: "exact", head: true }).then(({ count }) => setStudentCount(count || 0));
+    supabase.from("students").select("*", { count: "exact", head: true }).then(({ count }) => {
+      setStudentCount(count || 0);
+      setStudentTotal(count || 0);
+    });
     supabase.from("quizzes" as any).select("*").then(({ data }) => {
       const map: Record<number, Quiz> = {};
       ((data as unknown as Quiz[]) || []).forEach((q) => { map[q.id] = q; });
@@ -53,7 +58,11 @@ function Dashboard() {
 
   const loadResults = async () => {
     const { data } = await supabase.from("results").select("*").order("submitted_at", { ascending: false });
-    setResults((data as unknown as Result[]) || []);
+    const rows = (data as unknown as Result[]) || [];
+    setResults(rows);
+    const counts: Record<number, number> = {};
+    rows.forEach((r) => { if (r.quiz_id != null) counts[r.quiz_id] = (counts[r.quiz_id] || 0) + 1; });
+    setQuizTakenCounts(counts);
   };
 
   const resetAttempt = async (reg: string, name: string) => {
@@ -67,6 +76,11 @@ function Dashboard() {
   };
 
   const printEvidence = async (r: Result) => {
+    const taken = r.quiz_id != null ? (quizTakenCounts[r.quiz_id] || 0) : 0;
+    if (studentTotal === 0 || taken < studentTotal) {
+      toast.error(`Cannot download yet — ${studentTotal - taken} student(s) still need to take this quiz.`);
+      return;
+    }
     setPrinting(r.id);
     const quiz = r.quiz_id ? quizzes[r.quiz_id] : undefined;
     let questions: Question[] = [];
@@ -190,6 +204,8 @@ function Dashboard() {
                 const pct = r.total ? Math.round((r.score / r.total) * 100) : 0;
                 const pass = pct >= 50;
                 const qz = r.quiz_id ? quizzes[r.quiz_id] : undefined;
+                const taken = r.quiz_id != null ? (quizTakenCounts[r.quiz_id] || 0) : 0;
+                const allDone = studentTotal > 0 && taken >= studentTotal;
                 return (
                   <TableRow key={r.id}>
                     <TableCell className="font-mono">{r.student_reg}</TableCell>
@@ -201,8 +217,14 @@ function Dashboard() {
                     <TableCell className="text-xs text-muted-foreground">{new Date(r.submitted_at).toLocaleString()}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button size="sm" variant="outline" disabled={printing === r.id} onClick={() => printEvidence(r)}>
-                          <FileText className="h-3 w-3 mr-1" />{printing === r.id ? "..." : "Print"}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={printing === r.id || !allDone}
+                          title={allDone ? "Download evidence" : `Waiting for ${studentTotal - taken} more student(s)`}
+                          onClick={() => printEvidence(r)}
+                        >
+                          <FileText className="h-3 w-3 mr-1" />{printing === r.id ? "..." : allDone ? "Print" : "Locked"}
                         </Button>
                         <Button size="sm" variant="outline" disabled={resetting === r.student_reg} onClick={() => resetAttempt(r.student_reg, r.student_name)}>
                           <RotateCcw className="h-3 w-3 mr-1" />{resetting === r.student_reg ? "..." : "Reset"}
