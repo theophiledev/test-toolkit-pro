@@ -2,9 +2,8 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Award, Download } from "lucide-react";
+import { Award } from "lucide-react";
 import { type Question } from "@/lib/exam";
-import { downloadEvidencePDF } from "@/lib/exam-pdf";
 
 export const Route = createFileRoute("/result")({
   component: Result,
@@ -35,12 +34,6 @@ function Result() {
   const pct = r.total ? Math.round((r.score / r.total) * 100) : 0;
   const passed = pct >= 50;
 
-  const downloadPDF = () => downloadEvidencePDF({
-    student: r.student, score: r.score, total: r.total, auto: r.auto,
-    submitted_at: r.submitted_at, questions: r.questions || [], answers: r.answers || {},
-    module: r.quiz?.module, class_name: r.quiz?.class_name,
-  });
-
   return (
     <main className="min-h-screen flex items-center justify-center px-4 py-10">
       <Card className="max-w-lg w-full p-8 space-y-6 shadow-xl">
@@ -69,12 +62,8 @@ function Result() {
           <div className="flex justify-between"><span>Submitted</span><b>{new Date(r.submitted_at).toLocaleString()}</b></div>
         </div>
         <p className="text-xs text-muted-foreground text-center">Note: Long-answer questions are not auto-graded.</p>
-        <div className="flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={downloadPDF}>
-            <Download className="h-4 w-4 mr-2" /> PDF Evidence
-          </Button>
-          <Button className="flex-1" asChild><Link to="/">Done</Link></Button>
-        </div>
+        <p className="text-xs text-center text-muted-foreground">Your evidence PDF will be released by your administrator.</p>
+        <Button className="w-full" asChild><Link to="/">Done</Link></Button>
       </Card>
     </main>
   );
