@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { GraduationCap, ShieldCheck, BookOpen } from "lucide-react";
+import { downloadEvidencePDF } from "@/lib/exam-pdf";
+import type { Question } from "@/lib/exam";
 
 export const Route = createFileRoute("/")({
   component: Login,
@@ -39,12 +41,27 @@ function Login() {
   const pickQuiz = async (q: Quiz) => {
     const { data: existing } = await supabase
       .from("results")
-      .select("id")
+      .select("*")
       .eq("student_reg", student.reg_no)
       .eq("quiz_id" as any, q.id)
       .maybeSingle();
     if (existing) {
-      toast.error("You have already taken this quiz. Contact admin to retake.");
+      const { data: qs } = await supabase
+        .from("questions")
+        .select("*")
+        .eq("quiz_id" as any, q.id)
+        .order("ord", { ascending: true });
+      downloadEvidencePDF({
+        student: { name: student.name, reg_no: student.reg_no },
+        score: (existing as any).score,
+        total: (existing as any).total,
+        submitted_at: (existing as any).submitted_at,
+        questions: (qs as Question[]) || [],
+        answers: ((existing as any).answers as Record<number, string>) || {},
+        module: q.module,
+        class_name: q.class_name,
+      });
+      toast.success("You already took this quiz. Downloading your evidence...");
       return;
     }
     sessionStorage.setItem("exam_student", JSON.stringify(student));
