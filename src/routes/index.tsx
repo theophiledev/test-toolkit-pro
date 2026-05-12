@@ -36,7 +36,17 @@ function Login() {
     setLoading(false);
   };
 
-  const pickQuiz = (q: Quiz) => {
+  const pickQuiz = async (q: Quiz) => {
+    const { data: existing } = await supabase
+      .from("results")
+      .select("id")
+      .eq("student_reg", student.reg_no)
+      .eq("quiz_id" as any, q.id)
+      .maybeSingle();
+    if (existing) {
+      toast.error("You have already taken this quiz. Contact admin to retake.");
+      return;
+    }
     sessionStorage.setItem("exam_student", JSON.stringify(student));
     sessionStorage.setItem("exam_quiz", JSON.stringify(q));
     navigate({ to: "/confirm" });
