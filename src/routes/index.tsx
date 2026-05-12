@@ -6,8 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { GraduationCap, ShieldCheck, BookOpen } from "lucide-react";
-import { downloadEvidencePDF } from "@/lib/exam-pdf";
-import type { Question } from "@/lib/exam";
 
 export const Route = createFileRoute("/")({
   component: Login,
@@ -46,31 +44,7 @@ function Login() {
       .eq("quiz_id" as any, q.id)
       .maybeSingle();
     if (existing) {
-      const [{ count: totalStudents }, { count: takenCount }] = await Promise.all([
-        supabase.from("students").select("*", { count: "exact", head: true }),
-        supabase.from("results").select("*", { count: "exact", head: true }).eq("quiz_id" as any, q.id),
-      ]);
-      if ((totalStudents ?? 0) === 0 || (takenCount ?? 0) < (totalStudents ?? 0)) {
-        const remaining = (totalStudents ?? 0) - (takenCount ?? 0);
-        toast.error(`You already took this quiz. Evidence will be available once all students complete it (${remaining} remaining).`);
-        return;
-      }
-      const { data: qs } = await supabase
-        .from("questions")
-        .select("*")
-        .eq("quiz_id" as any, q.id)
-        .order("ord", { ascending: true });
-      downloadEvidencePDF({
-        student: { name: student.name, reg_no: student.reg_no },
-        score: (existing as any).score,
-        total: (existing as any).total,
-        submitted_at: (existing as any).submitted_at,
-        questions: (qs as Question[]) || [],
-        answers: ((existing as any).answers as Record<number, string>) || {},
-        module: q.module,
-        class_name: q.class_name,
-      });
-      toast.success("You already took this quiz. Downloading your evidence...");
+      toast.error("You already took this quiz. Results are released by your administrator.");
       return;
     }
     sessionStorage.setItem("exam_student", JSON.stringify(student));
