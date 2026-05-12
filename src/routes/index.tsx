@@ -46,6 +46,15 @@ function Login() {
       .eq("quiz_id" as any, q.id)
       .maybeSingle();
     if (existing) {
+      const [{ count: totalStudents }, { count: takenCount }] = await Promise.all([
+        supabase.from("students").select("*", { count: "exact", head: true }),
+        supabase.from("results").select("*", { count: "exact", head: true }).eq("quiz_id" as any, q.id),
+      ]);
+      if ((totalStudents ?? 0) === 0 || (takenCount ?? 0) < (totalStudents ?? 0)) {
+        const remaining = (totalStudents ?? 0) - (takenCount ?? 0);
+        toast.error(`You already took this quiz. Evidence will be available once all students complete it (${remaining} remaining).`);
+        return;
+      }
       const { data: qs } = await supabase
         .from("questions")
         .select("*")
