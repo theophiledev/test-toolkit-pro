@@ -76,11 +76,6 @@ function Dashboard() {
   };
 
   const printEvidence = async (r: Result) => {
-    const taken = r.quiz_id != null ? (quizTakenCounts[r.quiz_id] || 0) : 0;
-    if (studentTotal === 0 || taken < studentTotal) {
-      toast.error(`Cannot download yet — ${studentTotal - taken} student(s) still need to take this quiz.`);
-      return;
-    }
     setPrinting(r.id);
     const quiz = r.quiz_id ? quizzes[r.quiz_id] : undefined;
     let questions: Question[] = [];
@@ -204,8 +199,6 @@ function Dashboard() {
                 const pct = r.total ? Math.round((r.score / r.total) * 100) : 0;
                 const pass = pct >= 50;
                 const qz = r.quiz_id ? quizzes[r.quiz_id] : undefined;
-                const taken = r.quiz_id != null ? (quizTakenCounts[r.quiz_id] || 0) : 0;
-                const allDone = studentTotal > 0 && taken >= studentTotal;
                 return (
                   <TableRow key={r.id}>
                     <TableCell className="font-mono">{r.student_reg}</TableCell>
@@ -220,11 +213,11 @@ function Dashboard() {
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={printing === r.id || !allDone}
-                          title={allDone ? "Download evidence" : `Waiting for ${studentTotal - taken} more student(s)`}
+                          disabled={printing === r.id}
+                          title="Download evidence"
                           onClick={() => printEvidence(r)}
                         >
-                          <FileText className="h-3 w-3 mr-1" />{printing === r.id ? "..." : allDone ? "Print" : "Locked"}
+                          <FileText className="h-3 w-3 mr-1" />{printing === r.id ? "..." : "Print"}
                         </Button>
                         <Button size="sm" variant="outline" disabled={resetting === r.student_reg} onClick={() => resetAttempt(r.student_reg, r.student_name)}>
                           <RotateCcw className="h-3 w-3 mr-1" />{resetting === r.student_reg ? "..." : "Reset"}
