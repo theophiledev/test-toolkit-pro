@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Download, LogOut, Trophy, Users, TrendingUp, FilePlus, UserPlus, RotateCcw, BookOpen, FileText } from "lucide-react";
+import { Download, LogOut, Trophy, Users, TrendingUp, FilePlus, UserPlus, RotateCcw, BookOpen, FileText, FileArchive } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import jsPDF from "jspdf";
 import { toast } from "sonner";
 import { downloadEvidencePDF } from "@/lib/exam-pdf";
-import type { Question } from "@/lib/exam";
+import { gradeAnswer, type Question } from "@/lib/exam";
 
 export const Route = createFileRoute("/admin/dashboard")({
   component: Dashboard,
@@ -38,6 +40,8 @@ function Dashboard() {
   const [quizzes, setQuizzes] = useState<Record<number, Quiz>>({});
   const [studentTotal, setStudentTotal] = useState(0);
   const [quizTakenCounts, setQuizTakenCounts] = useState<Record<number, number>>({});
+  const [allowStudentDownload, setAllowStudentDownload] = useState(false);
+  const [exportingAll, setExportingAll] = useState(false);
 
   useEffect(() => {
     if (sessionStorage.getItem("admin_ok") !== "1") {
@@ -54,7 +58,15 @@ function Dashboard() {
       ((data as unknown as Quiz[]) || []).forEach((q) => { map[q.id] = q; });
       setQuizzes(map);
     });
+    supabase.from("settings").select("value").eq("key", "allow_student_download").maybeSingle()
+      .then(({ data }) => setAllowStudentDownload(data?.value === "true"));
   }, [navigate]);
+
+  const toggleStudentDownload = async (v: boolean) => {
+    setAllowStudentDownload(v);
+    await supabase.from("settings").upsert({ key: "allow_student_download", value: v ? "true" : "false" }, { onConflict: "key" });
+    toast.success(v ? "Students can now download evidence" : "Student downloads disabled");
+  };
 
   const loadResults = async () => {
     const { data } = await supabase.from("results").select("*").order("submitted_at", { ascending: false });
@@ -91,6 +103,84 @@ function Dashboard() {
       module: quiz?.module, class_name: quiz?.class_name,
     });
     setPrinting(null);
+  };
+
+  const exportAllEvidence = async () => {
+    if (!results.length) { toast.error("No submissions yet"); return; }
+    setExportingAll(true);
+    try {
+      const quizIds = Array.from(new Set(results.map((r) => r.quiz_id).filter((x): x is number => x != null)));
+      const qByQuiz: Record<number, Question[]> = {};
+      for (const qid of quizIds) {
+        const { data } = await supabase.from("questions").select("*").eq("quiz_id" as any, qid).order("ord", { ascending: true });
+        qByQuiz[qid] = (data as Question[]) || [];
+      }
+      const doc = new jsPDF();
+      doc.setFontSize(16);
+      doc.text("All Students — Evidence Report", 20, 20);
+      doc.setFontSize(10);
+      doc.text(`Generated: ${new Date().toLocaleString()}  |  Total: ${results.length}`, 20, 28);
+
+      results.forEach((r, idx) => {
+        doc.addPage();
+        let y = 20;
+        const pct = r.total ? Math.round((r.score / r.total) * 100) : 0;
+        const passed = pct >= 50;
+        const quiz = r.quiz_id ? quizzes[r.quiz_id] : undefined;
+        const questions = r.quiz_id ? (qByQuiz[r.quiz_id] || []) : [];
+        const answers = r.answers || {};
+
+        doc.setFontSize(14);
+        doc.text(`Student ${idx + 1} of ${results.length} — Evidence`, 20, y); y += 8;
+        doc.setLineWidth(0.4); doc.line(20, y, 190, y); y += 8;
+        doc.setFontSize(11);
+        const row = (k: string, v: string) => { doc.text(`${k}:`, 20, y); doc.text(v, 70, y); y += 7; };
+        if (quiz) row("Module", quiz.module);
+        if (quiz) row("Class", quiz.class_name);
+        row("Name", r.student_name);
+        row("Reg No", r.student_reg);
+        row("Score", `${r.score} / ${r.total}`);
+        row("Percentage", `${pct}%`);
+        row("Status", passed ? "PASS" : "FAIL");
+        row("Submitted", new Date(r.submitted_at).toLocaleString());
+
+        if (questions.length) {
+          y += 4;
+          doc.setFontSize(12); doc.text("Answer Sheet", 20, y); y += 6;
+          doc.setFontSize(9);
+          const wrap = (t: string, x: number, w: number) => {
+            const lines = doc.splitTextToSize(t, w);
+            for (const ln of lines) { if (y > 282) { doc.addPage(); y = 20; } doc.text(ln, x, y); y += 4.5; }
+          };
+          questions.forEach((q, i) => {
+            if (y > 265) { doc.addPage(); y = 20; }
+            const ua = answers[q.id] || "(no answer)";
+            const ok = q.type !== "LONG" && gradeAnswer(q, answers[q.id]);
+            doc.setFont("helvetica", "bold");
+            wrap(`Q${i + 1}. [${q.type}] (${q.marks ?? 1} mk) ${q.question}`, 20, 170);
+            doc.setFont("helvetica", "normal");
+            if (q.type === "MCQ") {
+              (["a", "b", "c", "d"] as const).forEach((k) => {
+                const opt = q[`option_${k}` as "option_a"];
+                if (opt) wrap(`   ${k.toUpperCase()}. ${opt}`, 20, 170);
+              });
+            }
+            doc.setTextColor(ok ? 0 : 200, ok ? 130 : 0, 0);
+            wrap(`Your answer: ${ua}${q.type === "LONG" ? "" : ok ? " (correct)" : " (wrong)"}`, 20, 170);
+            doc.setTextColor(0, 100, 0);
+            wrap(`Correct: ${q.correct_answer || "(manually graded)"}`, 20, 170);
+            doc.setTextColor(0, 0, 0);
+            y += 2;
+          });
+        }
+      });
+      doc.save(`all_evidence_${new Date().toISOString().slice(0, 10)}.pdf`);
+      toast.success("Combined evidence downloaded");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to export");
+    } finally {
+      setExportingAll(false);
+    }
   };
 
   const passed = results.filter((r) => r.total && r.score / r.total >= 0.5).length;
@@ -146,9 +236,20 @@ function Dashboard() {
           <Link to="/admin/questions"><Button variant="outline"><FilePlus className="h-4 w-4 mr-2" />Questions</Button></Link>
           <Link to="/admin/students"><Button variant="outline"><UserPlus className="h-4 w-4 mr-2" />Students</Button></Link>
           <Button variant="outline" onClick={exportAllPDF}><Download className="h-4 w-4 mr-2" />Export PDF</Button>
+          <Button variant="outline" onClick={exportAllEvidence} disabled={exportingAll}>
+            <FileArchive className="h-4 w-4 mr-2" />{exportingAll ? "Building..." : "Download All Evidence"}
+          </Button>
           <Button variant="ghost" onClick={logout}><LogOut className="h-4 w-4 mr-2" />Logout</Button>
         </div>
       </header>
+
+      <Card className="p-4 flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <Label htmlFor="allow-dl" className="font-semibold">Allow students to download evidence</Label>
+          <p className="text-xs text-muted-foreground">When on, students can download their own PDF anytime from their result page.</p>
+        </div>
+        <Switch id="allow-dl" checked={allowStudentDownload} onCheckedChange={toggleStudentDownload} />
+      </Card>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Stat icon={<Users className="h-5 w-5" />} label="Students" value={studentCount} />
