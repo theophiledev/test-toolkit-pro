@@ -2,8 +2,10 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Award } from "lucide-react";
+import { Award, FileText } from "lucide-react";
 import { type Question } from "@/lib/exam";
+import { supabase } from "@/integrations/supabase/client";
+import { downloadEvidencePDF } from "@/lib/exam-pdf";
 
 export const Route = createFileRoute("/result")({
   component: Result,
@@ -23,11 +25,14 @@ type R = {
 function Result() {
   const navigate = useNavigate();
   const [r, setR] = useState<R | null>(null);
+  const [canDownload, setCanDownload] = useState(false);
 
   useEffect(() => {
     const s = sessionStorage.getItem("exam_result");
     if (!s) navigate({ to: "/" });
     else setR(JSON.parse(s));
+    supabase.from("settings").select("value").eq("key", "allow_student_download").maybeSingle()
+      .then(({ data }) => setCanDownload(data?.value === "true"));
   }, [navigate]);
 
   if (!r) return null;
@@ -62,8 +67,18 @@ function Result() {
           <div className="flex justify-between"><span>Submitted</span><b>{new Date(r.submitted_at).toLocaleString()}</b></div>
         </div>
         <p className="text-xs text-muted-foreground text-center">Note: Long-answer questions are not auto-graded.</p>
-        <p className="text-xs text-center text-muted-foreground">Your evidence PDF will be released by your administrator.</p>
-        <Button className="w-full" asChild><Link to="/">Done</Link></Button>
+        {canDownload ? (
+          <Button className="w-full" onClick={() => downloadEvidencePDF({
+            student: r.student, score: r.score, total: r.total, auto: r.auto,
+            submitted_at: r.submitted_at, questions: r.questions || [], answers: r.answers || {},
+            module: r.quiz?.module, class_name: r.quiz?.class_name,
+          })}>
+            <FileText className="h-4 w-4 mr-2" />Download Evidence PDF
+          </Button>
+        ) : (
+          <p className="text-xs text-center text-muted-foreground">Your evidence PDF will be released by your administrator.</p>
+        )}
+        <Button variant="outline" className="w-full" asChild><Link to="/">Done</Link></Button>
       </Card>
     </main>
   );
