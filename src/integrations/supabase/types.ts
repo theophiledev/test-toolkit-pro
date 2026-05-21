@@ -161,16 +161,19 @@ export type Database = {
         Row: {
           name: string
           number: number | null
+          pin_hash: string | null
           reg_no: string
         }
         Insert: {
           name: string
           number?: number | null
+          pin_hash?: string | null
           reg_no: string
         }
         Update: {
           name?: string
           number?: number | null
+          pin_hash?: string | null
           reg_no?: string
         }
         Relationships: []
