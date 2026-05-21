@@ -13,10 +13,19 @@ export const Route = createFileRoute("/")({
 
 type Quiz = { id: number; module: string; class_name: string; active: boolean };
 
+async function hashPin(pin: string): Promise<string> {
+  const data = new TextEncoder().encode(pin);
+  const buf = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 function Login() {
   const [reg, setReg] = useState("");
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<"reg" | "quiz">("reg");
+  const [step, setStep] = useState<"reg" | "pin" | "quiz">("reg");
+  const [pinMode, setPinMode] = useState<"create" | "enter">("enter");
+  const [pin, setPin] = useState("");
+  const [pin2, setPin2] = useState("");
   const [student, setStudent] = useState<any>(null);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const navigate = useNavigate();
@@ -27,10 +36,28 @@ function Login() {
     const r = reg.trim();
     const { data: stu } = await supabase.from("students").select("*").eq("reg_no", r).maybeSingle();
     if (!stu) { setLoading(false); return toast.error("Registration number not found in roster"); }
+    setStudent(stu);
+    setPinMode((stu as any).pin_hash ? "enter" : "create");
+    setPin(""); setPin2("");
+    setStep("pin");
+    setLoading(false);
+  };
+
+  const handlePin = async () => {
+    if (!/^\d{4,6}$/.test(pin)) return toast.error("PIN must be 4-6 digits");
+    setLoading(true);
+    const hash = await hashPin(pin);
+    if (pinMode === "create") {
+      if (pin !== pin2) { setLoading(false); return toast.error("PINs do not match"); }
+      const { error } = await supabase.from("students").update({ pin_hash: hash } as any).eq("reg_no", student.reg_no);
+      if (error) { setLoading(false); return toast.error("Could not save PIN"); }
+      toast.success("PIN created. Keep it safe.");
+    } else {
+      if ((student as any).pin_hash !== hash) { setLoading(false); return toast.error("Incorrect PIN"); }
+    }
     const { data: qz } = await supabase.from("quizzes" as any).select("*").eq("active", true).order("id", { ascending: false });
     const list = (qz as unknown as Quiz[]) || [];
     if (list.length === 0) { setLoading(false); return toast.error("No active quiz available. Contact your administrator."); }
-    setStudent(stu);
     setQuizzes(list);
     setStep("quiz");
     setLoading(false);
@@ -60,7 +87,11 @@ function Login() {
             <GraduationCap className="h-8 w-8" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight">Exam Portal</h1>
-          <p className="text-muted-foreground">{step === "reg" ? "Sign in with your registration number." : "Choose your quiz."}</p>
+          <p className="text-muted-foreground">
+            {step === "reg" && "Sign in with your registration number."}
+            {step === "pin" && (pinMode === "create" ? "Create a personal PIN to secure your account." : "Enter your personal PIN.")}
+            {step === "quiz" && "Choose your quiz."}
+          </p>
         </div>
         {step === "reg" ? (
           <Card className="p-6 space-y-4 shadow-xl">
@@ -71,6 +102,24 @@ function Login() {
             <Button className="w-full" size="lg" onClick={handleVerify} disabled={loading}>
               {loading ? "Verifying..." : "Continue"}
             </Button>
+          </Card>
+        ) : step === "pin" ? (
+          <Card className="p-6 space-y-4 shadow-xl">
+            <p className="text-sm">Welcome <b>{student?.name}</b></p>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{pinMode === "create" ? "New PIN (4-6 digits)" : "PIN"}</label>
+              <Input type="password" inputMode="numeric" maxLength={6} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} onKeyDown={(e) => e.key === "Enter" && pinMode === "enter" && handlePin()} />
+            </div>
+            {pinMode === "create" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Confirm PIN</label>
+                <Input type="password" inputMode="numeric" maxLength={6} value={pin2} onChange={(e) => setPin2(e.target.value.replace(/\D/g, ""))} onKeyDown={(e) => e.key === "Enter" && handlePin()} />
+              </div>
+            )}
+            <Button className="w-full" size="lg" onClick={handlePin} disabled={loading}>
+              {loading ? "Please wait..." : pinMode === "create" ? "Create PIN & Continue" : "Verify PIN"}
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={() => { setStep("reg"); setPin(""); setPin2(""); }}>Back</Button>
           </Card>
         ) : (
           <Card className="p-6 space-y-3 shadow-xl">
